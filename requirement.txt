@@ -1,8 +1,0 @@
-streamlit
-google-generativeai
-python-dotenv
-pandas
-altair
-requests
-plotly
-streamlit-lottie
