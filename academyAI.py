@@ -2,9 +2,182 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import streamlit as st
 import os
+import pandas as pd
+import altair as alt
 from json_loader import load_json
+import time
+from streamlit_lottie import st_lottie
+import requests
+import plotly.express as px
+import plotly.graph_objects as go
+
+def load_lottie_url(url: str):
+    """Load Lottie animation from URL"""
+    try:
+        r = requests.get(url)
+        if r.status_code != 200:
+            return None
+        return r.json()
+    except:
+        return None
+
+def create_radar_chart(scores, personality_type):
+    """Create an interactive radar chart for personality scores"""
+    categories = list(scores.keys())
+    values = list(scores.values())
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(
+        r=values,
+        theta=categories,
+        fill='toself',
+        name=personality_type
+    ))
+    
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, 3]
+            )),
+        showlegend=True,
+        title=f"Personality Profile - Type {personality_type}"
+    )
+    return fig
+
+def create_progress_animation():
+    """Create a progress animation with custom styling"""
+    progress_bar = st.progress(0)
+    for i in range(100):
+        time.sleep(0.01)
+        progress_bar.progress(i + 1)
+    progress_bar.empty()
 
 def main():
+    # Page Configuration
+    st.set_page_config(
+        page_title="NEUC Academic Consultant",
+        page_icon="🎓",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+
+    # Custom CSS for consistent color scheme
+    # Custom CSS for consistent color scheme
+    st.markdown("""
+        <style>
+        /* Main page styling */
+        .stApp {
+            background-color: #1f1f1f;
+            color: #e0e0e0;
+        }
+
+        /* Sidebar styling */
+        .css-1d391kg {
+            background-color: #2c2c2c;
+        }
+
+        /* Headers */
+        h1, h2, h3, h4, h5, h6 {
+            color: #e0e0e0 !important;
+        }
+
+        /* Buttons */
+        .stButton button {
+            background-color: #4a90e2 !important;
+            color: #ffffff !important;
+            border-radius: 20px;
+            padding: 10px 24px;
+            border: none !important;
+            transition: all 0.3s ease;
+        }
+        .stButton button:hover {
+            background-color: #357ab8 !important;
+        }
+
+        /* Progress bar */
+        .stProgress > div > div > div > div {
+            background-color: #4a90e2;
+        }
+
+        /* Radio buttons */
+        .stRadio > div {
+            background-color: #2c2c2c;
+            padding: 15px;
+            border-radius: 10px;
+            color: #e0e0e0;
+        }
+
+        /* Text areas */
+        .stTextArea textarea {
+            background-color: #2c2c2c;
+            color: #e0e0e0;
+            border: 1px solid #4a90e2;
+            border-radius: 10px;
+        }
+
+        /* Info boxes */
+        .stAlert {
+            background-color: #333333;
+            color: #e0e0e0;
+            border: 1px solid #4a90e2;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        /* Success message */
+        .element-container .stSuccess {
+            background-color: #27ae60;
+            color: #ffffff;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        /* Warning message */
+        .element-container .stWarning {
+            background-color: #f39c12;
+            color: #ffffff;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        /* Error message */
+        .element-container .stError {
+            background-color: #e74c3c;
+            color: #ffffff;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        /* Card-like containers */
+        .css-1r6slb0 {
+            background-color: #2c2c2c;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Links */
+        a {
+            color: #4a90e2 !important;
+            text-decoration: none;
+        }
+        a:hover {
+            color: #357ab8 !important;
+        }
+
+        /* Expander */
+        .streamlit-expander {
+            background-color: #2c2c2c;
+            border-radius: 10px;
+            border: 1px solid #4a90e2;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+
+
+
     load_dotenv()
     gen_key = os.getenv("GEMINI_API_KEY")
 
@@ -14,60 +187,134 @@ def main():
 
     genai.configure(api_key=gen_key)
 
-    # Main Layout
-    st.title("🎓 NEUC Academic Consultant")
-    st.markdown("Welcome! Let’s help you find the right course based on your personality and interests.")
-
-    # Tabs for Navigation
-    tabs = st.tabs(["Introduction", "Questionnaire", "Recommendations"])
-
-    # Introduction Tab
-    with tabs[0]:
-        st.header("Introduction")
-        st.write(
-            "Tell us a bit about yourself to get personalized recommendations. "
-            "Your responses will help us tailor our course suggestions."
-        )
-        user_description = st.text_area("Describe your current situation (optional)", "")
-
-    # Questionnaire Tab
-    with tabs[1]:
-        st.header("Personality Check")
-        st.write("Answer a few questions to help us understand your personality type.")
-
-        # Using Expander for Grouped Questions
-        with st.expander("Answer the following questions"):
-            q1 = st.radio("Do you prefer:", ["Working independently", "Working in groups"])
-            q2 = st.radio("Are you more:", ["Analytical and logical", "Empathetic and caring"])
-            q3 = st.radio("When solving problems, do you prefer:", ["Structured plans", "Flexible approaches"])
-            q4 = st.radio("Do you feel energized after social interactions?", ["Yes", "No"])
-            q5 = st.radio("When making decisions, do you rely more on:", ["Facts", "Feelings"])
-            q6 = st.radio("Do you prefer to:", ["Plan ahead", "Go with the flow"])
-            q7 = st.radio("When starting a new project, do you:", ["Dive in", "Plan carefully"])
-            q8 = st.radio("Do you focus on:", ["Practical realities", "Abstract possibilities"])
-
-        # Scoring Logic
-        introvert_score = (q1 == "Working independently") + (q4 == "No")
-        extrovert_score = (q1 == "Working in groups") + (q4 == "Yes")
-        thinking_score = (q2 == "Analytical and logical") + (q5 == "Facts")
-        feeling_score = (q2 == "Empathetic and caring") + (q5 == "Feelings")
-        judging_score = (q3 == "Structured plans") + (q6 == "Plan ahead") + (q7 == "Plan carefully")
-        perceiving_score = (q3 == "Flexible approaches") + (q6 == "Go with the flow") + (q7 == "Dive in")
-        sensing_score = (q8 == "Practical realities")
-        intuition_score = (q8 == "Abstract possibilities")
-
-        personality_type = (
-            ("I" if introvert_score > extrovert_score else "E") +
-            ("N" if intuition_score > sensing_score else "S") +
-            ("T" if thinking_score > feeling_score else "F") +
-            ("J" if judging_score > perceiving_score else "P")
+    # Sidebar
+    with st.sidebar:
+        st.title("Navigation")
+        page = st.radio("Go to", ["Home", "Personality Assessment", "Course Recommendations"])
+        
+        st.markdown("---")
+        st.markdown("### About")
+        st.info(
+            "This AI-powered academic consultant helps you discover "
+            "the perfect course based on your personality type and preferences."
         )
 
-        st.success(f"Your personality type is **{personality_type}**.")
+    if page == "Home":
+        # Load and display Lottie animation
+        lottie_url = "https://assets5.lottiefiles.com/packages/lf20_V9t630.json"
+        lottie_json = load_lottie_url(lottie_url)
+        if lottie_json:
+            st_lottie(lottie_json, height=300)
 
-    # Recommendations Tab
-    with tabs[2]:
-        st.header("📈 Recommended Courses")
+        st.title("🎓 Welcome to NEUC Academic Consultant")
+        st.markdown("""
+            ### Your Personal Guide to Academic Success
+            
+            Discover the perfect course that aligns with your personality and aspirations using our 
+            AI-powered recommendation system. Our platform combines:
+            
+            - 🧠 Advanced personality assessment
+            - 📊 Data-driven course matching
+            - 🤖 AI-powered personalized recommendations
+            - 📈 Interactive visualizations
+            
+            Get started by navigating to the Personality Assessment section!
+        """)
+
+    elif page == "Personality Assessment":
+        st.title("Personality Assessment")
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            st.subheader("Tell us about yourself")
+            user_description = st.text_area(
+                "Describe your interests, goals, and aspirations:",
+                placeholder="E.g., I'm passionate about technology and problem-solving...",
+                height=150
+            )
+
+            st.subheader("Personality Questionnaire")
+            with st.expander("📋 Answer these questions carefully", expanded=True):
+                q1 = st.radio("1. Do you prefer:", ["Working independently", "Working in groups"])
+                q2 = st.radio("2. Are you more:", ["Analytical and logical", "Empathetic and caring"])
+                q3 = st.radio("3. When solving problems, do you prefer:", ["Structured plans", "Flexible approaches"])
+                q4 = st.radio("4. Do you feel energized after social interactions?", ["Yes", "No"])
+                q5 = st.radio("5. When making decisions, do you rely more on:", ["Facts", "Feelings"])
+                q6 = st.radio("6. Do you prefer to:", ["Plan ahead", "Go with the flow"])
+                q7 = st.radio("7. When starting a new project, do you:", ["Dive in", "Plan carefully"])
+                q8 = st.radio("8. Do you focus on:", ["Practical realities", "Abstract possibilities"])
+
+        with col2:
+            st.image("https://www.calmsage.com/wp-content/uploads/2022/08/what-are-the-myers-briggs-personality-types-1200x1251.jpg", 
+                    caption="Different Personality Types")
+            
+            st.markdown("""
+                ### Why Personality Matters
+                Understanding your personality type can help you:
+                - Choose courses that match your learning style
+                - Identify potential career paths
+                - Develop effective study strategies
+                - Build on your natural strengths
+            """)
+
+        if st.button("Analyze My Personality", key="analyze"):
+            create_progress_animation()
+            
+            # Scoring Logic
+            scores = {
+                'Introvert': (q1 == "Working independently") + (q4 == "No"),
+                'Extrovert': (q1 == "Working in groups") + (q4 == "Yes"),
+                'Thinking': (q2 == "Analytical and logical") + (q5 == "Facts"),
+                'Feeling': (q2 == "Empathetic and caring") + (q5 == "Feelings"),
+                'Judging': (q3 == "Structured plans") + (q6 == "Plan ahead") + (q7 == "Plan carefully"),
+                'Perceiving': (q3 == "Flexible approaches") + (q6 == "Go with the flow") + (q7 == "Dive in"),
+                'Sensing': (q8 == "Practical realities"),
+                'Intuition': (q8 == "Abstract possibilities")
+            }
+
+            # Calculate personality type
+            personality_type = (
+                ("I" if scores['Introvert'] > scores['Extrovert'] else "E") +
+                ("N" if scores['Intuition'] > scores['Sensing'] else "S") +
+                ("T" if scores['Thinking'] > scores['Feeling'] else "F") +
+                ("J" if scores['Judging'] > scores['Perceiving'] else "P")
+            )
+
+            st.session_state['personality_type'] = personality_type
+            st.session_state['user_description'] = user_description
+            
+            # Display results in columns
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.success(f"Your personality type is **{personality_type}**")
+                radar_chart = create_radar_chart(scores, personality_type)
+                st.plotly_chart(radar_chart, use_container_width=True)
+            
+            with col2:
+                # Display personality traits explanation
+                st.markdown(f"""
+                    ### Your Personality Breakdown
+                    
+                    Your type **{personality_type}** indicates:
+                    - {'Introvert (I): Prefers quiet reflection' if 'I' in personality_type else 'Extrovert (E): Enjoys social interaction'}
+                    - {'Intuitive (N): Focuses on possibilities' if 'N' in personality_type else 'Sensing (S): Focuses on facts'}
+                    - {'Thinking (T): Makes logical decisions' if 'T' in personality_type else 'Feeling (F): Makes value-based decisions'}
+                    - {'Judging (J): Prefers structure' if 'J' in personality_type else 'Perceiving (P): Prefers flexibility'}
+                """)
+
+    elif page == "Course Recommendations":
+        st.title("📚 Course Recommendations")
+        
+        if 'personality_type' not in st.session_state:
+            st.warning("Please complete the personality assessment first!")
+            return
+            
+        personality_type = st.session_state['personality_type']
+        user_description = st.session_state.get('user_description', '')
+        
+        st.info(f"Generating personalized recommendations for personality type: **{personality_type}**")
         
         json_file_path = "courses_info.json"
         json_data = load_json(json_file_path)
@@ -84,11 +331,15 @@ def main():
 
         formatted_text = format_json_for_gemini(json_data)
 
-        if st.button("Get Recommendations"):
+        if st.button("Generate Recommendations", key="generate"):
+            create_progress_animation()
+            
             def generate_recommendations(personality, description):
                 system_prompt = (
-                    "You are an experienced Academic Consultant. Provide course suggestions tailored to the user's MBTI type "
-                    "and any additional context they provided.\n\n"
+                    """You are an experienced Academic Consultant for New Era University College, focused on providing expert academic guidance based on students' goals, strengths, and interests. Your role is to offer clear, practical advice to support informed decisions about academic paths, career prospects, and course requirements.
+                    If MBTI insights are relevant and helpful, briefly mention how certain personality traits might align with specific academic settings or learning styles (e.g., Introverts may prefer independent study environments, while Extraverts may excel in group settings). However, if MBTI is not relevant, focus only on the academic guidance requested.
+                    Always provide direct, actionable advice tailored to the user's specific academic queries. Recognize and expand abbreviations (e.g., 'CS' as Computer Science) to maintain clarity. Offer well-rounded recommendations, encouraging the user to consider additional factors beyond personality for a thorough decision-making process.
+                    """
                     f"User's personality type: {personality}\n"
                 )
                 if description:
@@ -100,7 +351,20 @@ def main():
                 return response.text
 
             response = generate_recommendations(personality_type, user_description)
+
+            
+            
+            # Display recommendations in a nice format
+            st.markdown("### 🎯 Your Personalized Recommendations")
             st.markdown(response)
+            
+            # Add option to download recommendations
+            st.download_button(
+                label="Download Recommendations",
+                data=response,
+                file_name="academic_recommendations.txt",
+                mime="text/plain"
+            )
 
 if __name__ == "__main__":
     main()
