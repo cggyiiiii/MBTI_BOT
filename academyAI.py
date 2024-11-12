@@ -62,6 +62,10 @@ def main():
         initial_sidebar_state="expanded"
     )
 
+
+
+
+
     load_dotenv()
     gen_key = os.getenv("GEMINI_API_KEY")
 
@@ -220,9 +224,18 @@ def main():
             
             def generate_recommendations(personality, description):
                 system_prompt = (
-                    """You are an experienced Academic Consultant for New Era University College, focused on providing expert academic guidance based on students' goals, strengths, and interests. Your role is to offer clear, practical advice to support informed decisions about academic paths, career prospects, and course requirements.
-                    If MBTI insights are relevant and helpful, briefly mention how certain personality traits might align with specific academic settings or learning styles (e.g., Introverts may prefer independent study environments, while Extraverts may excel in group settings). However, if MBTI is not relevant, focus only on the academic guidance requested.
-                    Always provide direct, actionable advice tailored to the user's specific academic queries. Recognize and expand abbreviations (e.g., 'CS' as Computer Science) to maintain clarity. Offer well-rounded recommendations, encouraging the user to consider additional factors beyond personality for a thorough decision-making process.
+                    """You are an experienced Academic Consultant for New Era University College, focused on providing expert academic guidance based on students' goals, strengths, and interests. 
+                    Your role is to offer clear, practical advice to support informed decisions about academic paths, career prospects, and course requirements.
+                    If MBTI insights are relevant and helpful, briefly mention how certain personality traits might align with specific academic settings or learning styles (e.g., Introverts may prefer independent study environments, while Extraverts may excel in group settings). 
+                    However, if MBTI is not relevant, focus only on the academic guidance requested.
+                    Always provide direct, actionable advice tailored to the user's specific academic queries. 
+                    Recognize and expand abbreviations (e.g., 'CS' as Computer Science) to maintain clarity. 
+                    Offer well-rounded recommendations, encouraging the user to consider additional factors beyond personality for a thorough decision-making process.
+
+                    You should only suggest no more than 4 courses to the user, because the user may feel overwhelmed by too many options. 
+                    Ensure that the courses you recommend are relevant to the user's personality type and align with their academic interests and career goals. 
+                    Include key details about each course, such as the degree offered, duration, minimum entry requirements, and potential career prospects. 
+                    Encourage the user to explore these courses further to make an informed decision about their academic future.
                     """
                     f"User's personality type: {personality}\n"
                 )
