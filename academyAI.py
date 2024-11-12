@@ -117,7 +117,7 @@ def main():
         with col1:
             st.subheader("Tell us about yourself")
             user_description = st.text_area(
-                "Describe your interests, goals, and aspirations:",
+                "Describe your interests, goals, and aspirations: (Optional)",
                 placeholder="E.g., I'm passionate about technology and problem-solving...",
                 height=150
             )
