@@ -13,17 +13,83 @@ def main():
         return
     
     genai.configure(api_key=gen_key)
-
+    
+    # Step 1: Gather Basic User Information (Optional)
     st.title("NEUC Academic Consultant")
+    st.subheader("Tell us a bit about yourself (optional)")
     st.text(
-        "**To help me create the best solution for you, please share a bit about yourself! You might include:**\n\n"
+        "**Please share your current situation if you'd like personalized recommendations:**\n\n"
         "What are your main concerns or challenges right now?\n"
         "What are your career aspirations or future goals?\n"
-        "Any specific interests or areas where you'd like support?\n\n"
-        "This information will help me provide a tailored and effective solution for your needs!"
+        "Any specific interests or areas where you'd like support?"
     )
+    
+    user_description = st.text_area("Describe your current situation (optional)", "")
 
-    # Function to format JSON data for output
+    # Step 2: Expanded MBTI-like Questionnaire
+    st.subheader("Personality Check")
+    st.write("Answer a few quick questions to help us determine your personality type.")
+
+    # Original Questions
+    q1 = st.radio("Do you prefer:", ("Working independently", "Working in groups"))
+    q2 = st.radio("Are you more:", ("Analytical and logical", "Empathetic and caring"))
+    q3 = st.radio("When solving problems, do you prefer:", ("Structured plans", "Flexible, open-ended approaches"))
+
+    # Additional Questions
+    q4 = st.radio("Do you often feel energized after social interactions?", ("Yes, I feel energized and refreshed", "No, I feel drained and need time alone to recharge"))
+    q5 = st.radio("When making decisions, do you rely more on:", ("Facts and data", "Your feelings and values"))
+    q6 = st.radio("In your daily life, do you prefer to:", ("Plan ahead and stick to schedules", "Keep options open and go with the flow"))
+    q7 = st.radio("When approaching a new project, do you:", ("Dive in and adjust as you go", "Carefully plan and organize before starting"))
+    q8 = st.radio("Do you focus more on:", ("Practical, immediate realities", "Abstract possibilities and concepts"))
+
+    # Enhanced Logic to Determine Personality Type
+    introvert_score = 0
+    extrovert_score = 0
+    thinking_score = 0
+    feeling_score = 0
+    judging_score = 0
+    perceiving_score = 0
+    sensing_score = 0
+    intuition_score = 0
+
+    # Scoring based on responses
+    introvert_score += 1 if q1 == "Working independently" else 0
+    extrovert_score += 1 if q1 == "Working in groups" else 0
+
+    thinking_score += 1 if q2 == "Analytical and logical" else 0
+    feeling_score += 1 if q2 == "Empathetic and caring" else 0
+
+    judging_score += 1 if q3 == "Structured plans" else 0
+    perceiving_score += 1 if q3 == "Flexible, open-ended approaches" else 0
+
+    extrovert_score += 1 if q4 == "Yes, I feel energized and refreshed" else 0
+    introvert_score += 1 if q4 == "No, I feel drained and need time alone to recharge" else 0
+
+    thinking_score += 1 if q5 == "Facts and data" else 0
+    feeling_score += 1 if q5 == "Your feelings and values" else 0
+
+    judging_score += 1 if q6 == "Plan ahead and stick to schedules" else 0
+    perceiving_score += 1 if q6 == "Keep options open and go with the flow" else 0
+
+    perceiving_score += 1 if q7 == "Dive in and adjust as you go" else 0
+    judging_score += 1 if q7 == "Carefully plan and organize before starting" else 0
+
+    sensing_score += 1 if q8 == "Practical, immediate realities" else 0
+    intuition_score += 1 if q8 == "Abstract possibilities and concepts" else 0
+
+    # Determine Personality Type based on highest scores
+    personality_type = ""
+    personality_type += "I" if introvert_score > extrovert_score else "E"
+    personality_type += "N" if intuition_score > sensing_score else "S"
+    personality_type += "T" if thinking_score > feeling_score else "F"
+    personality_type += "J" if judging_score > perceiving_score else "P"
+
+    st.write(f"Based on your answers, we identified your personality type as **{personality_type}**.")
+
+    # Step 3: Format Course Information
+    json_file_path = "courses_info.json"
+    json_data = load_json(json_file_path)
+
     def format_json_for_gemini(data):
         formatted_text = "Here is the detailed course information:\n\n"
         for item in data:
@@ -40,61 +106,32 @@ def main():
             formatted_text += course_summary
         return formatted_text
 
-    json_file_path = "courses_info.json"
-    json_data = load_json(json_file_path)
     formatted_text = format_json_for_gemini(json_data)
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = [
-            {
-                "role": "assistant",
-                "content": "Hello! I’m here to help you with your academic choices. Feel free to tell me a bit about your interests or ask for course recommendations."
-            }
-        ]
-
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-    def generate_recommendations(query):
+    # Step 4: Generate Recommendations
+    def generate_recommendations(personality, description):
         system_prompt = (
             "You are an experienced Academic Consultant for New Era University College, with a focus on providing expert academic guidance tailored to students' goals, strengths, and interests. "
-            "Your primary role is to offer clear, practical advice to help students make informed decisions about their academic paths, whether they need information on specific courses, career prospects, or academic requirements. "
+            "You also incorporate MBTI personality insights into your recommendations to help students choose suitable courses. "
             "Provide information in smaller chunks to avoid overwhelming the user, and prompt them to ask for further details if needed.\n\n"
             
-            "When applicable and helpful, you can use insights from MBTI to enhance recommendations, but focus first on addressing the user’s specific academic questions. "
-            "If MBTI is not mentioned by the user or isn't directly relevant to their academic choices, do not provide MBTI-related insights. "
-            "If MBTI is relevant to their choices, mention briefly how certain personality traits may align with specific academic settings or learning styles "
-            "(e.g., Introverts (I) may benefit from quieter, independent study environments, while Extraverts (E) might excel in collaborative learning).\n\n"
-            
-            "In every response, prioritize direct, actionable guidance on the user’s academic questions. If the user provides abbreviations (e.g., 'CS' for Computer Science or 'TCSL' for Teaching Chinese as Second Language), recognize and expand them into their full form, making sure the information remains relevant. "
-            "Provide well-rounded suggestions that encourage the user to consider additional factors beyond personality for a comprehensive decision-making process. "
-            "If a user is directly seeking MBTI-based insights, provide thoughtful explanations about how MBTI traits might align with their academic preferences and study environments. "
-            "Otherwise, deliver straightforward academic guidance that builds confidence in their academic choices."
+            f"User's personality type is {personality}. Based on this type, provide courses that align well with this personality.\n"
         )
 
+        if description:
+            system_prompt += f"\nUser's situation and goals:\n{description}\n\n"
+        
+        system_prompt += f"Course data:\n{formatted_text}"
 
-        input_message = f"{system_prompt}\n\nUser query: {query}\n\nCourse data:\n{formatted_text}"
-
+        input_message = system_prompt
         model = genai.GenerativeModel("gemini-1.5-flash")
         response = model.generate_content(input_message)
         return response.text
 
-    def llm_function(query):
-        response = generate_recommendations(query)
-        
-        with st.chat_message("assistant"):
-            st.markdown(response)
-
-        st.session_state.messages.append({"role": "user", "content": query})
-        st.session_state.messages.append({"role": "assistant", "content": response})
-
-    query = st.chat_input("Please give some description about yourself")
-    
-    if query:
-        with st.chat_message("user"):
-            st.markdown(query)
-        llm_function(query)
+    if st.button("Get Course Recommendations"):
+        response = generate_recommendations(personality_type, user_description)
+        st.subheader("Recommended Courses")
+        st.markdown(response)
 
 if __name__ == "__main__":
     main()
